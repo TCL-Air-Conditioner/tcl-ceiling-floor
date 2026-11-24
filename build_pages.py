@@ -37,6 +37,29 @@ def digest_file(path):
     return digest.hexdigest()
 
 
+def prepare_playback_video(source, destination):
+    """Keep originals untouched and publish a widely compatible H.264 copy."""
+    inspection = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-i", str(source)],
+        check=False, capture_output=True, text=True, timeout=60,
+    )
+    match = re.search(r"Stream #\d+:\d+[^\n]*Video:\s*([\w]+)", inspection.stderr)
+    if not match:
+        raise RuntimeError(f"Could not identify the video codec: {source.name}")
+    if match.group(1).lower() == "h264":
+        shutil.copyfile(source, destination)
+        return
+    result = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(source),
+         "-map", "0:v:0", "-map", "0:a:0?", "-c:v", "libx264", "-preset", "medium",
+         "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
+         "-movflags", "+faststart", str(destination)],
+        check=False, capture_output=True, text=True, timeout=900,
+    )
+    if result.returncode:
+        raise RuntimeError(f"Could not prepare browser-compatible video {source.name}: {result.stderr[-1500:]}")
+
+
 def build(destination):
     templates = sorted(
         path for path in ROOT.glob("*/index.html")
@@ -63,14 +86,19 @@ def build(destination):
         video = ROOT / slug / (slug + ".mp4")
         item = {"slug": slug, "title": html.unescape(label), "file": None, "cover": None}
         if video.is_file():
-            media_hash = digest_file(video)
-            cover = read_cover(video)
+            target_dir = destination / slug
+            target_dir.mkdir(exist_ok=True)
+            playback_video = target_dir / video.name
+            prepare_playback_video(video, playback_video)
+            print(slug + ": browser-compatible video prepared", flush=True)
+            media_hash = digest_file(playback_video)
+            cover = read_cover(playback_video)
             cover_name = "covers/" + slug + "." + hashlib.sha256(cover).hexdigest()[:16] + ".jpg"
             (destination / cover_name).write_bytes(cover)
             item.update({
                 "file": slug + "/" + video.name + "?v=" + media_hash[:16],
                 "hash": media_hash,
-                "bytes": video.stat().st_size,
+                "bytes": playback_video.stat().st_size,
                 "cover": cover_name,
             })
             assets.append(cover_name)
@@ -102,7 +130,7 @@ def build(destination):
         item = by_slug[slug]
         page = template.read_text(encoding="utf-8")
         target = destination / slug
-        target.mkdir()
+        target.mkdir(exist_ok=True)
         if item["file"]:
             raw = (destination / item["cover"]).read_bytes()
             image = '<img src="data:image/jpeg;base64,' + base64.b64encode(raw).decode() + '" alt="">'
@@ -114,8 +142,7 @@ def build(destination):
             page = page.replace('src="' + media_name + '"', 'src="' + media_url + '"')
             page = page.replace('href="' + media_name + '"', 'href="' + media_url + '"')
             page = page.replace('id="trainingVideo"', 'id="trainingVideo" crossorigin="anonymous"')
-            shutil.copyfile(template.parent / media_name, target / media_name)
-            print(slug + ": cover, version and original video ready")
+            print(slug + ": cover, version and browser-compatible video ready")
         else:
             page, count = re.subn(
                 r'<div class="video-stage">.*?</button>\s*</div>',

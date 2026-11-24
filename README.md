@@ -6,6 +6,8 @@
 
 将每条 MP4 放到下表对应路径，保持文件名一致。提交后，GitHub Actions 会构建网站、生成视频封面并发布。启用部署时，需要在仓库 Settings → Pages 中将 Source 设为 GitHub Actions。不要用其他产品的视频代替。
 
+为兼容更多浏览器，构建时会将非 H.264 视频转换为高质量 H.264 播放副本；H.264 视频保持原样。仓库中的原始视频不会被修改，网页发布的是播放副本。
+
 | 序号 | 视频名称 | MP4 文件路径 |
 |---|---|---|
 | 1 | Filter Removal | `filter-removal/filter-removal.mp4` |
