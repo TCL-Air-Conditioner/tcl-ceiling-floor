@@ -1,6 +1,6 @@
 # TCL Ceiling & Floor 视频网页
 
-本仓库以 [VoxIN EVO T4](https://github.com/TCL-Air-Conditioner/voxin-evo-t4) 的页面和构建代码为模板，包含 12 个视频页面。当前尚未提供新产品 MP4，页面会显示 `Video coming soon.`；这是视频占位，不代表视频已经上传。
+本仓库以 [VoxIN EVO T4](https://github.com/TCL-Air-Conditioner/voxin-evo-t4) 的页面和构建代码为模板，包含 12 个视频页面。如果某条 MP4 尚未提供，该页面会显示 `Video coming soon.`；这是视频占位，不代表视频已经上传。
 
 ## 上传视频
 
