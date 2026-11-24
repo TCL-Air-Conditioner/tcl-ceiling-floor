@@ -1,0 +1,39 @@
+# One-time recovery of a verified Pages artifact after GitHub's deploy step failed.
+name: Recover verified Pages deployment
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/recover-pages.yml']
+permissions:
+  actions: read
+  contents: read
+  pages: write
+  id-token: write
+jobs:
+  recover:
+    if: github.event.head_commit.message == 'Recover verified Pages deployment'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Retrieve the verified previous build
+        uses: actions/download-artifact@v4
+        with:
+          name: github-pages
+          run-id: '45340685359'
+          github-token: ${{ github.token }}
+          path: _recovery
+      - name: Unpack Pages artifact
+        run: |
+          mkdir -p _site
+          tar -xf _recovery/artifact.tar -C _site
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Allow artifact metadata to settle
+        run: sleep 20
+      - name: Deploy
+        uses: actions/deploy-pages@v4
+        id: deployment
